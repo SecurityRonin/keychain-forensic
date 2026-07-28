@@ -1,0 +1,61 @@
+[workspace]
+resolver = "2"
+members = ["core", "forensic"]
+
+# Single source of truth for fields shared (identical) by every member (DRY).
+# `version` is NOT hoisted: core and forensic are versioned independently, so
+# each keeps its own `version` inline.
+[workspace.package]
+edition = "2021"
+rust-version = "1.85"
+license = "Apache-2.0"
+repository = "https://github.com/SecurityRonin/keychain-forensic"
+homepage = "https://github.com/SecurityRonin/keychain-forensic"
+authors = ["Albert Hui <albert@securityronin.com>"]
+categories = ["parser-implementations", "cryptography"]
+readme = "README.md"
+
+# Single source of truth for dependency versions (DRY): declare each once;
+# members write `dep.workspace = true`. The inter-crate `keychain-core` version
+# lives here too, so a bump touches one line instead of every member.
+[workspace.dependencies]
+keychain-core = { path = "core", version = "0.1.0" }
+thiserror = "2"
+# Fleet's single audited bounds-checked integer reader (no_std, forbid(unsafe),
+# fuzzed) — never hand-roll per-crate `bytes.rs` (Paranoid Gatekeeper standard).
+safe-read = "0.2"
+# CLI (kc4n6) front-end deps — live in the forensic crate only.
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Crypto: audited RustCrypto crates ONLY. The login.keychain-db format is
+# solved (PBKDF2-HMAC-SHA1 → 3DES-EDE3-CBC); never hand-roll a primitive.
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+des = "0.8"
+cbc = "0.1"
+cipher = "0.4"
+hmac = "0.12"
+sha1 = "0.10"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all                      = { level = "warn", priority = -1 }
+pedantic                 = { level = "warn", priority = -1 }
+correctness              = { level = "deny", priority = -1 }
+suspicious               = { level = "deny", priority = -1 }
+unwrap_used              = { level = "deny", priority = 0 }
+expect_used              = { level = "deny", priority = 0 }
+module_name_repetitions  = { level = "allow", priority = 1 }
+must_use_candidate       = { level = "allow", priority = 1 }
+missing_errors_doc       = { level = "allow", priority = 1 }
+missing_panics_doc       = { level = "allow", priority = 1 }
+cast_possible_truncation = { level = "allow", priority = 1 }
+cast_possible_wrap       = { level = "allow", priority = 1 }
+cast_sign_loss           = { level = "allow", priority = 1 }
+cast_precision_loss      = { level = "allow", priority = 1 }
+too_many_lines           = { level = "allow", priority = 1 }
+items_after_statements   = { level = "allow", priority = 1 }
+similar_names            = { level = "allow", priority = 1 }
+manual_let_else          = { level = "allow", priority = 1 }

@@ -1,0 +1,9 @@
+# Allow `unwrap()`/`expect()` inside test functions and `#[cfg(test)]` modules.
+# Production code keeps `clippy::unwrap_used = deny` (see workspace Cargo.toml);
+# tests legitimately unwrap to fail loudly, so this is the upstream-recommended
+# exception rather than scattering `#[allow]` across every test module.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+
+# Product/format names that look like code identifiers to doc_markdown.
+doc-valid-idents = ["AppleDatabase", "DbBlob", "DBKey", "SSGP", "3DES", "3DES-EDE3-CBC", "HMAC-SHA1", "PBKDF2", "PBKDF2-HMAC-SHA1", "CSSM", "Chrome", "Chromium", "RustCrypto", "macOS", "login.keychain-db", "keychain-db"]

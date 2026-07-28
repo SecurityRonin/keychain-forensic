@@ -1,0 +1,29 @@
+[package]
+name = "keychain-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Pure-Rust, byte-oriented macOS login.keychain-db reader — parse the AppleDatabase container and, given the login password, offline-decrypt generic-password secrets (incl. Chromium 'Safe Storage'), over any &[u8] source"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/keychain-core"
+readme.workspace = true
+authors.workspace = true
+keywords = ["forensics", "keychain", "macos", "dfir", "decryption"]
+categories.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }
+safe-read = { workspace = true }
+# Crypto: audited RustCrypto crates only. PBKDF2-HMAC-SHA1 master-key derivation
+# + 3DES-EDE3-CBC unwrap of the DBKey, per-record keys, and SSGP payloads.
+pbkdf2 = { workspace = true }
+des = { workspace = true }
+cbc = { workspace = true }
+cipher = { workspace = true }
+hmac = { workspace = true }
+sha1 = { workspace = true }
+
+[lints]
+workspace = true

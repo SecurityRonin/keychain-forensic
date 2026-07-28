@@ -1,0 +1,15 @@
+# gitleaks configuration — extends the default ruleset.
+#
+# The test corpus holds one OS-minted throwaway keychain
+# (tests/data/test-login.keychain-db) whose login password and single secret are
+# deliberately-public test values; every credential inside it is PBKDF2/3DES
+# encrypted, never stored in the clear, so the default rules do not flag it. The
+# allowlist below keeps a binary fixture from tripping entropy heuristics.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "OS-minted throwaway test keychain (no real credentials)"
+paths = [
+  '''tests/data/test-login\.keychain-db''',
+]

@@ -1,0 +1,29 @@
+# cargo-vet config file
+
+[cargo-vet]
+version = "0.10"
+
+[imports.bytecode-alliance]
+url = "https://raw.githubusercontent.com/bytecodealliance/wasmtime/main/supply-chain/audits.toml"
+
+[imports.embark]
+url = "https://raw.githubusercontent.com/EmbarkStudios/rust-ecosystem/main/audits.toml"
+
+[imports.google]
+url = "https://raw.githubusercontent.com/google/rust-crate-audits/main/audits.toml"
+
+[imports.mozilla]
+url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
+
+# Our own workspace crates are first-party — never audited as their crates.io
+# release (the release-plz freshness-treadmill fix: keeps every version-bump PR's
+# vet job green without a per-version exemption).
+[policy.keychain-core]
+audit-as-crates-io = false
+
+[policy.keychain-forensic]
+audit-as-crates-io = false
+
+# NOTE: third-party dependency exemptions are generated on the first CI vet run
+# (`cargo vet regenerate exemptions`) once Cargo.lock resolves the graph, then
+# committed. The imported aggregate audit sets above cover the RustCrypto stack.

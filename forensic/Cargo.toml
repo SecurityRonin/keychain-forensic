@@ -1,0 +1,27 @@
+[package]
+name = "keychain-forensic"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "macOS Keychain forensic toolkit built on keychain-core — the kc4n6 CLI audits a login.keychain-db offline: recover generic-password secrets and the Chromium 'Safe Storage' key given the login password, or report the store as present-but-locked"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/keychain-forensic"
+readme.workspace = true
+authors.workspace = true
+keywords = ["forensics", "keychain", "macos", "dfir", "credentials"]
+categories.workspace = true
+
+[[bin]]
+name = "kc4n6"
+path = "src/main.rs"
+
+[dependencies]
+keychain-core = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
