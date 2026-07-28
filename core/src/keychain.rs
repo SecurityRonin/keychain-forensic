@@ -14,7 +14,7 @@
 use std::collections::BTreeMap;
 
 use crate::container::{Container, GenericRecord};
-use crate::crypto::{kcdecrypt, MASTER_KEY_LEN};
+use crate::crypto::{derive_master_key, kcdecrypt, unwrap_key_blob, MASTER_KEY_LEN};
 use crate::error::KeychainError;
 
 /// A parsed but still-locked keychain.
@@ -81,10 +81,28 @@ impl<'a> Keychain<'a> {
     ///
     /// A wrong or absent login password surfaces as [`KeychainError::Locked`] —
     /// the store is reported present-but-locked, never a fabricated secret.
-    pub fn unlock(&'a self, _password: &[u8]) -> Result<UnlockedKeychain<'a>, KeychainError> {
-        // RED: not yet implemented — the derive -> DBKey unwrap -> key-list build
-        // lands in GREEN. Report Locked so no fabricated secret is ever returned.
-        Err(KeychainError::Locked)
+    pub fn unlock(&'a self, password: &[u8]) -> Result<UnlockedKeychain<'a>, KeychainError> {
+        let db = self.container.db_blob()?;
+        let master = derive_master_key(password, &db.salt);
+        // A bad password fails the DBKey's padding check -> Locked.
+        let plain = kcdecrypt(&master, &db.iv, &db.cipher).map_err(|_| KeychainError::Locked)?;
+        let dbkey_slice = plain.get(..MASTER_KEY_LEN).ok_or(KeychainError::Locked)?;
+        let mut dbkey = [0u8; MASTER_KEY_LEN];
+        dbkey.copy_from_slice(dbkey_slice);
+
+        let mut key_list = BTreeMap::new();
+        for rec in self.container.symmetric_key_records() {
+            // A per-record key that won't unwrap is skipped (partial corruption
+            // must not sink the rest of the recovery).
+            if let Ok(key) = unwrap_key_blob(&dbkey, &rec.iv, &rec.cipher) {
+                key_list.insert(rec.label, key);
+            }
+        }
+
+        Ok(UnlockedKeychain {
+            container: &self.container,
+            key_list,
+        })
     }
 }
 

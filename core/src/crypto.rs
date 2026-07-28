@@ -12,11 +12,8 @@
 //!
 //! Reference: `chainbreaker` (n0fate) and Apple's open-source `securityd`.
 
-#[allow(unused_imports)] // used by GREEN kcdecrypt + the test module
 use cbc::Decryptor;
-#[allow(unused_imports)]
 use cipher::{block_padding::NoPadding, BlockDecryptMut, KeyIvInit};
-#[allow(unused_imports)]
 use des::TdesEde3;
 use sha1::Sha1;
 
@@ -53,9 +50,38 @@ pub fn derive_master_key(password: &[u8], salt: &[u8]) -> [u8; MASTER_KEY_LEN] {
 /// `1..=8` and every pad byte must equal it). A wrong key surfaces here as
 /// [`KeychainError::DecryptionFailed`] via the padding check — never silent
 /// garbage.
-pub fn kcdecrypt(_key: &[u8], _iv: &[u8], _data: &[u8]) -> Result<Vec<u8>, KeychainError> {
-    // RED: not yet implemented — the 3DES-CBC + padding logic lands in GREEN.
-    Err(KeychainError::DecryptionFailed)
+pub fn kcdecrypt(key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>, KeychainError> {
+    if key.len() != MASTER_KEY_LEN || iv.len() != BLOCK_SIZE {
+        return Err(KeychainError::InvalidKeyLength);
+    }
+    if data.is_empty() || data.len() % BLOCK_SIZE != 0 {
+        return Err(KeychainError::DecryptionFailed);
+    }
+    let mut buf = data.to_vec();
+    let dec = Decryptor::<TdesEde3>::new_from_slices(key, iv)
+        .map_err(|_| KeychainError::InvalidKeyLength)?;
+    // NoPadding: the cipher does not touch padding; we validate it ourselves so
+    // a wrong password is caught by the pad check rather than mis-parsed.
+    let plain = dec
+        .decrypt_padded_mut::<NoPadding>(&mut buf)
+        .map_err(|_| KeychainError::DecryptionFailed)?;
+    unpad(plain)
+}
+
+/// Strip Apple/`chainbreaker`-style PKCS#7 padding over an 8-byte block.
+fn unpad(plain: &[u8]) -> Result<Vec<u8>, KeychainError> {
+    let &pad = plain.last().ok_or(KeychainError::DecryptionFailed)?;
+    let pad = pad as usize;
+    if pad == 0 || pad > BLOCK_SIZE || pad > plain.len() {
+        return Err(KeychainError::DecryptionFailed);
+    }
+    if plain[plain.len() - pad..]
+        .iter()
+        .any(|&b| b as usize != pad)
+    {
+        return Err(KeychainError::DecryptionFailed);
+    }
+    Ok(plain[..plain.len() - pad].to_vec())
 }
 
 /// Unwrap a per-record symmetric key wrapped under the DBKey (CMS key wrap).
@@ -64,12 +90,25 @@ pub fn kcdecrypt(_key: &[u8], _iv: &[u8], _data: &[u8]) -> Result<Vec<u8>, Keych
 /// fixed [`MAGIC_CMS_IV`], reverse the first 32 plaintext bytes, decrypt that
 /// again under the blob's own IV, and take bytes `4..` as the 24-byte key.
 pub fn unwrap_key_blob(
-    _dbkey: &[u8],
-    _iv: &[u8],
-    _wrapped: &[u8],
+    dbkey: &[u8],
+    iv: &[u8],
+    wrapped: &[u8],
 ) -> Result<[u8; MASTER_KEY_LEN], KeychainError> {
-    // RED: not yet implemented — the CMS two-pass unwrap lands in GREEN.
-    Err(KeychainError::DecryptionFailed)
+    let first = kcdecrypt(dbkey, &MAGIC_CMS_IV, wrapped)?;
+    if first.len() < 32 {
+        return Err(KeychainError::DecryptionFailed);
+    }
+    let mut rev = first[..32].to_vec();
+    rev.reverse();
+    let second = kcdecrypt(dbkey, iv, &rev)?;
+    // The real key is the trailing 24 bytes after a 4-byte prefix.
+    let key = second.get(4..).ok_or(KeychainError::DecryptionFailed)?;
+    if key.len() != MASTER_KEY_LEN {
+        return Err(KeychainError::DecryptionFailed);
+    }
+    let mut out = [0u8; MASTER_KEY_LEN];
+    out.copy_from_slice(key);
+    Ok(out)
 }
 
 #[cfg(test)]
