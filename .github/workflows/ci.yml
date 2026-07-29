@@ -85,3 +85,31 @@ jobs:
         run: cargo fetch
       - name: Check supply chain
         run: cargo vet --locked
+
+  coverage:
+    name: Coverage + 100% function gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - uses: taiki-e/install-action@a402910a723481c4c80d006d75298c796a9c8695 # cargo-llvm-cov
+        with:
+          tool: cargo-llvm-cov
+      # 100% function coverage of the library, honoring `// cov:unreachable`
+      # markers on provably-dead arms; main.rs (the Humble CLI shell) is excluded
+      # by the gate script.
+      - name: Coverage + 100% function gate
+        run: |
+          cargo llvm-cov --all-features --json --output-path cov.json
+          python3 scripts/coverage-gate.py cov.json
+      - name: Emit lcov
+        run: cargo llvm-cov report --lcov --output-path lcov.info
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@0f8570b1a125f4937846a11fcfa3bcd548bd8c97 # v4.6.0
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
