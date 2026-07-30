@@ -53,9 +53,14 @@ tier-2 real-artifact validation (Doer-Checker), not a self-consistent round-trip
 - **Redistribution:** self-created throwaway; no real credentials. The login
   password and the sole secret are deliberately public test values. Safe to
   commit (small, clearly-owned, no third-party data). Apache-2.0 with the repo.
-- **Consumed by:** `core/tests/oracle_keychain.rs` (decrypts with the login
-  password and asserts the recovered secret) and the `keychain-forensic` CLI
-  smoke test.
+- **Consumed by:**
+  - `core/tests/oracle_keychain.rs` —
+    `recovers_known_secret_from_os_minted_keychain`,
+    `recovers_chromium_safe_storage_key`,
+    `wrong_password_reports_locked_not_a_fabricated_secret`.
+  - `forensic/tests/cli.rs` — `audit_recovers_and_classifies_real_secrets`,
+    `cli_run_success_against_real_fixture`,
+    `cli_run_wrong_password_reports_locked_not_a_fabricated_secret`.
 
 ## Regenerating
 
