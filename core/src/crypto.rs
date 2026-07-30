@@ -201,6 +201,73 @@ mod tests {
         );
     }
 
+    #[test]
+    fn kcdecrypt_rejects_inconsistent_padding_bytes() {
+        // The final byte claims 3 pad bytes but the tail reads 01 03 03. A pad
+        // *length* in 1..=8 is not enough — every pad byte must agree, or a
+        // wrong key could yield silently-truncated plaintext.
+        let key = [0x33u8; 24];
+        let iv = [0x44u8; 8];
+        let ct = encrypt_no_padding(&key, &iv, b"payload!ABCDE\x01\x03\x03");
+        assert_eq!(
+            kcdecrypt(&key, &iv, &ct),
+            Err(KeychainError::DecryptionFailed)
+        );
+    }
+
+    #[test]
+    fn unwrap_key_blob_rejects_a_short_first_pass() {
+        // The CMS first pass must yield >= 32 bytes for the reversal step; this
+        // wrapped blob unpads to 24.
+        let dbkey = [0x55u8; 24];
+        let mut first = [0u8; 32];
+        first[24..].fill(8); // 8 bytes of PKCS#7 pad -> unpads to 24 bytes
+        let wrapped = encrypt_no_padding(&dbkey, &MAGIC_CMS_IV, &first);
+        assert_eq!(
+            unwrap_key_blob(&dbkey, &[0x66u8; 8], &wrapped),
+            Err(KeychainError::DecryptionFailed)
+        );
+    }
+
+    #[test]
+    fn unwrap_key_blob_rejects_an_unwrapped_key_of_the_wrong_length() {
+        // Built backwards through both CMS passes so the second pass unpads to
+        // 24 bytes: `second[4..]` is then 20 bytes, not a 24-byte 3DES key. A
+        // short key must error, never be zero-extended into a usable one.
+        let dbkey = [0x77u8; 24];
+        let iv = [0x88u8; 8];
+
+        let mut second_plain = [0u8; 32];
+        second_plain[24..].fill(8); // unpads to 24 -> key slice is 20 bytes
+        let rev = encrypt_no_padding(&dbkey, &iv, &second_plain);
+
+        // `unwrap_key_blob` reverses the first pass's 32 bytes before the second
+        // decrypt, so hand it the reversal of that ciphertext.
+        let mut first_plain = rev.clone();
+        first_plain.reverse();
+        first_plain.extend_from_slice(&[8u8; 8]); // pads off to those 32 bytes
+        let wrapped = encrypt_no_padding(&dbkey, &MAGIC_CMS_IV, &first_plain);
+
+        assert_eq!(
+            unwrap_key_blob(&dbkey, &iv, &wrapped),
+            Err(KeychainError::DecryptionFailed)
+        );
+    }
+
+    /// 3DES-EDE3-CBC encrypt with the padding left entirely to the caller, so a
+    /// test can plant a deliberately malformed pad.
+    fn encrypt_no_padding(key: &[u8], iv: &[u8], plain: &[u8]) -> Vec<u8> {
+        use cbc::Encryptor;
+        use cipher::BlockEncryptMut;
+        let mut buf = plain.to_vec();
+        let n = buf.len();
+        Encryptor::<TdesEde3>::new_from_slices(key, iv)
+            .unwrap()
+            .encrypt_padded_mut::<NoPadding>(&mut buf, n)
+            .unwrap()
+            .to_vec()
+    }
+
     fn hex(s: &str) -> Vec<u8> {
         (0..s.len())
             .step_by(2)

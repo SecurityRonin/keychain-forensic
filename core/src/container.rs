@@ -325,6 +325,42 @@ fn read_lv(data: &[u8], base: usize, col: u32) -> String {
 mod tests {
     use super::*;
 
+    fn put_u32(b: &mut [u8], off: usize, v: u32) {
+        b[off..off + 4].copy_from_slice(&v.to_be_bytes());
+    }
+
+    /// A minimal synthetic `AppleDatabase`: 20-byte header, an 8-byte schema
+    /// naming one table of `table_id` at `table_offset`, and `len` bytes total
+    /// for the caller to stamp table/record fields into. This is the
+    /// attacker's-eye view — a crafted evidence file is exactly this plus
+    /// hostile field values.
+    fn scaffold(len: usize, table_offset: u32, table_id: u32) -> Vec<u8> {
+        let mut b = vec![0u8; len];
+        put_u32(&mut b, 0, KEYCHAIN_SIGNATURE);
+        put_u32(&mut b, 12, HEADER_SIZE as u32); // schema follows the header
+        put_u32(&mut b, 24, 1); // table_count
+        put_u32(&mut b, 28, table_offset);
+        put_u32(&mut b, HEADER_SIZE + table_offset as usize + ATOM, table_id);
+        b
+    }
+
+    /// A container with exactly one symmetric-key record, so a test can vary
+    /// just the 4-byte tag where the 20-byte `ssgp` label is expected and the
+    /// blob's crypto extents.
+    fn key_blob_fixture(tag: [u8; 4], start_crypto: u32, total_length: u32) -> Vec<u8> {
+        let mut b = scaffold(512, 12, RECORD_SYMMETRIC_KEY);
+        put_u32(&mut b, 40, 1); // record_count (table_base 32 + 8)
+        put_u32(&mut b, 60, 200); // the one record offset (list_base 32 + 28)
+        let base = HEADER_SIZE + 12 + 200; // 232
+        put_u32(&mut b, base, 228); // record_size -> a 96-byte _KEY_BLOB body
+        let rec = base + 132; // _KEY_BLOB_REC_HEADER is 132 bytes
+        put_u32(&mut b, rec + 8, start_crypto);
+        put_u32(&mut b, rec + 12, total_length);
+        let label = rec + total_length as usize + 8;
+        b[label..label + 4].copy_from_slice(&tag);
+        b
+    }
+
     #[test]
     fn parse_rejects_non_keychain() {
         let err = Container::parse(b"NOTAKEYCHAINxxxxxxxx").unwrap_err();
@@ -348,5 +384,122 @@ mod tests {
     fn read_lv_out_of_range_is_empty_not_panic() {
         // col points past the buffer -> empty, no panic.
         assert_eq!(read_lv(&[0u8; 8], 0, 0x1000), "");
+    }
+
+    #[test]
+    fn db_blob_rejects_a_bad_common_blob_magic() {
+        // Metadata table at +12 puts the DbBlob at 20 + 12 + 0x38 = 88. The
+        // error must name the offending magic AND its offset, not just "bad".
+        let mut b = scaffold(96, 12, RECORD_METADATA);
+        put_u32(&mut b, 88, 0xDEAD_BEEF);
+        assert_eq!(
+            Container::parse(&b).unwrap().db_blob().unwrap_err(),
+            KeychainError::BadBlobMagic {
+                found: 0xDEAD_BEEF,
+                offset: 88,
+            }
+        );
+    }
+
+    #[test]
+    fn db_blob_rejects_crypto_start_past_total_length() {
+        // A crafted StartCryptoBlob (100) beyond TotalLength (50) would make an
+        // unguarded `data[start..end]` panic; `slice`'s start>end arm errors.
+        let mut b = scaffold(176, 12, RECORD_METADATA);
+        put_u32(&mut b, 88, COMMON_BLOB_MAGIC);
+        put_u32(&mut b, 96, 100); // StartCryptoBlob
+        put_u32(&mut b, 100, 50); // TotalLength
+        assert_eq!(
+            Container::parse(&b).unwrap().db_blob().unwrap_err(),
+            KeychainError::TooShort {
+                offset: 188,
+                needed: 0,
+                available: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn record_bases_is_empty_when_the_table_type_is_absent() {
+        // Only a metadata table exists, so both record lookups miss.
+        let b = scaffold(96, 12, RECORD_METADATA);
+        let c = Container::parse(&b).unwrap();
+        assert!(c.symmetric_key_records().is_empty());
+        assert!(c.generic_password_records().is_empty());
+    }
+
+    #[test]
+    fn record_bases_is_empty_when_the_record_count_is_unreadable() {
+        // The buffer ends right after the table's type id, so the record count
+        // at table_base+8 cannot be read.
+        let b = scaffold(68, 40, RECORD_SYMMETRIC_KEY);
+        assert!(Container::parse(&b)
+            .unwrap()
+            .symmetric_key_records()
+            .is_empty());
+    }
+
+    #[test]
+    fn record_bases_stops_when_the_offset_list_runs_off_the_buffer() {
+        // A crafted count claims 3 records but the offset list starts exactly at
+        // the end of the buffer: the walk must break, not spin or panic.
+        let mut b = scaffold(88, 40, RECORD_SYMMETRIC_KEY);
+        put_u32(&mut b, 68, 3);
+        assert!(Container::parse(&b)
+            .unwrap()
+            .symmetric_key_records()
+            .is_empty());
+    }
+
+    #[test]
+    fn ssgp_tagged_key_blob_is_parsed() {
+        let b = key_blob_fixture(*b"ssgp", 24, 48);
+        let recs = Container::parse(&b).unwrap().symmetric_key_records();
+        assert_eq!(recs.len(), 1);
+        assert_eq!(&recs[0].label[..4], b"ssgp");
+        assert_eq!(recs[0].cipher.len(), 24); // total_length - start_crypto
+    }
+
+    #[test]
+    fn key_blob_without_the_ssgp_tag_is_skipped() {
+        // Same fixture, only the tag differs: a non-ssgp key blob carries no
+        // secret key, so it is skipped rather than mis-parsed.
+        let b = key_blob_fixture(*b"xxxx", 24, 48);
+        assert!(Container::parse(&b)
+            .unwrap()
+            .symmetric_key_records()
+            .is_empty());
+    }
+
+    #[test]
+    fn key_blob_with_an_empty_ciphertext_is_skipped() {
+        // start_crypto == total_length -> a zero-length wrapped key: there is
+        // nothing to unwrap, so the record must not be reported.
+        let b = key_blob_fixture(*b"ssgp", 24, 24);
+        assert!(Container::parse(&b)
+            .unwrap()
+            .symmetric_key_records()
+            .is_empty());
+    }
+
+    #[test]
+    fn generic_record_without_an_ssgp_area_has_no_secret() {
+        // SSGPArea == 0: the record's cleartext attributes are still recovered,
+        // but there is no encrypted secret to report.
+        let mut b = scaffold(384, 12, RECORD_GENERIC_PASSWORD);
+        put_u32(&mut b, 40, 1); // record_count
+        put_u32(&mut b, 60, 200); // the one record offset
+        let base = HEADER_SIZE + 12 + 200; // 232
+        put_u32(&mut b, base, 96); // record_size
+        put_u32(&mut b, base + 4 * 4, 0); // SSGPArea = 0
+        put_u32(&mut b, base + 4 * 19, 100); // Account column pointer
+        put_u32(&mut b, base + 100, 5); // the attribute's length prefix
+        b[base + 104..base + 109].copy_from_slice(b"alice");
+
+        let recs = Container::parse(&b).unwrap().generic_password_records();
+        assert_eq!(recs.len(), 1);
+        assert_eq!(recs[0].account, "alice");
+        assert_eq!(recs[0].service, ""); // column pointer 0 -> absent
+        assert!(recs[0].ssgp.is_none());
     }
 }
