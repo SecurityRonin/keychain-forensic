@@ -1,0 +1,139 @@
+pub mod keychain_core
+pub mod keychain_core::container
+pub struct keychain_core::container::Container<'a>
+impl<'a> keychain_core::container::Container<'a>
+pub fn keychain_core::container::Container<'a>::db_blob(&self) -> core::result::Result<keychain_core::container::DbBlob, keychain_core::error::KeychainError>
+pub fn keychain_core::container::Container<'a>::generic_password_records(&self) -> alloc::vec::Vec<keychain_core::container::GenericRecord>
+pub fn keychain_core::container::Container<'a>::parse(&'a [u8]) -> core::result::Result<Self, keychain_core::error::KeychainError>
+pub fn keychain_core::container::Container<'a>::symmetric_key_records(&self) -> alloc::vec::Vec<keychain_core::container::KeyBlobRecord>
+pub struct keychain_core::container::DbBlob
+pub keychain_core::container::DbBlob::cipher: alloc::vec::Vec<u8>
+pub keychain_core::container::DbBlob::iv: [u8; 8]
+pub keychain_core::container::DbBlob::salt: [u8; 20]
+pub struct keychain_core::container::GenericRecord
+pub keychain_core::container::GenericRecord::account: alloc::string::String
+pub keychain_core::container::GenericRecord::label: alloc::string::String
+pub keychain_core::container::GenericRecord::service: alloc::string::String
+pub keychain_core::container::GenericRecord::ssgp: core::option::Option<keychain_core::container::SsgpBlob>
+pub struct keychain_core::container::KeyBlobRecord
+pub keychain_core::container::KeyBlobRecord::cipher: alloc::vec::Vec<u8>
+pub keychain_core::container::KeyBlobRecord::iv: [u8; 8]
+pub keychain_core::container::KeyBlobRecord::label: [u8; 20]
+pub struct keychain_core::container::SsgpBlob
+pub keychain_core::container::SsgpBlob::iv: [u8; 8]
+pub keychain_core::container::SsgpBlob::key_index: [u8; 20]
+pub keychain_core::container::SsgpBlob::payload: alloc::vec::Vec<u8>
+pub const keychain_core::container::COMMON_BLOB_MAGIC: u32
+pub const keychain_core::container::KEYCHAIN_SIGNATURE: u32
+pub const keychain_core::container::RECORD_GENERIC_PASSWORD: u32
+pub const keychain_core::container::RECORD_INTERNET_PASSWORD: u32
+pub const keychain_core::container::RECORD_METADATA: u32
+pub const keychain_core::container::RECORD_SYMMETRIC_KEY: u32
+pub mod keychain_core::crypto
+pub const keychain_core::crypto::BLOCK_SIZE: usize
+pub const keychain_core::crypto::MAGIC_CMS_IV: [u8; 8]
+pub const keychain_core::crypto::MASTER_KEY_LEN: usize
+pub const keychain_core::crypto::PBKDF2_ROUNDS: u32
+pub fn keychain_core::crypto::derive_master_key(&[u8], &[u8]) -> [u8; 24]
+pub fn keychain_core::crypto::kcdecrypt(&[u8], &[u8], &[u8]) -> core::result::Result<alloc::vec::Vec<u8>, keychain_core::error::KeychainError>
+pub fn keychain_core::crypto::unwrap_key_blob(&[u8], &[u8], &[u8]) -> core::result::Result<[u8; 24], keychain_core::error::KeychainError>
+pub mod keychain_core::error
+pub enum keychain_core::error::KeychainError
+pub keychain_core::error::KeychainError::BadBlobMagic
+pub keychain_core::error::KeychainError::BadBlobMagic::found: u32
+pub keychain_core::error::KeychainError::BadBlobMagic::offset: usize
+pub keychain_core::error::KeychainError::BadSignature
+pub keychain_core::error::KeychainError::BadSignature::found: u32
+pub keychain_core::error::KeychainError::DbBlobMissing
+pub keychain_core::error::KeychainError::DecryptionFailed
+pub keychain_core::error::KeychainError::InvalidKeyLength
+pub keychain_core::error::KeychainError::Locked
+pub keychain_core::error::KeychainError::MissingTable
+pub keychain_core::error::KeychainError::MissingTable::table_type: u32
+pub keychain_core::error::KeychainError::TooShort
+pub keychain_core::error::KeychainError::TooShort::available: usize
+pub keychain_core::error::KeychainError::TooShort::needed: usize
+pub keychain_core::error::KeychainError::TooShort::offset: usize
+pub mod keychain_core::keychain
+pub struct keychain_core::keychain::GenericSecret
+pub keychain_core::keychain::GenericSecret::account: alloc::string::String
+pub keychain_core::keychain::GenericSecret::label: alloc::string::String
+pub keychain_core::keychain::GenericSecret::secret: alloc::vec::Vec<u8>
+pub keychain_core::keychain::GenericSecret::service: alloc::string::String
+impl keychain_core::keychain::GenericSecret
+pub fn keychain_core::keychain::GenericSecret::as_text(&self) -> core::option::Option<&str>
+pub fn keychain_core::keychain::GenericSecret::display(&self) -> alloc::string::String
+pub struct keychain_core::keychain::Keychain<'a>
+impl<'a> keychain_core::keychain::Keychain<'a>
+pub fn keychain_core::keychain::Keychain<'a>::open(&'a [u8]) -> core::result::Result<Self, keychain_core::error::KeychainError>
+pub fn keychain_core::keychain::Keychain<'a>::unlock(&'a self, &[u8]) -> core::result::Result<keychain_core::keychain::UnlockedKeychain<'a>, keychain_core::error::KeychainError>
+pub struct keychain_core::keychain::UnlockedKeychain<'a>
+impl keychain_core::keychain::UnlockedKeychain<'_>
+pub fn keychain_core::keychain::UnlockedKeychain<'_>::generic_secrets(&self) -> alloc::vec::Vec<keychain_core::keychain::GenericSecret>
+pub fn keychain_core::keychain::UnlockedKeychain<'_>::key_count(&self) -> usize
+pub enum keychain_core::KeychainError
+pub keychain_core::KeychainError::BadBlobMagic
+pub keychain_core::KeychainError::BadBlobMagic::found: u32
+pub keychain_core::KeychainError::BadBlobMagic::offset: usize
+pub keychain_core::KeychainError::BadSignature
+pub keychain_core::KeychainError::BadSignature::found: u32
+pub keychain_core::KeychainError::DbBlobMissing
+pub keychain_core::KeychainError::DecryptionFailed
+pub keychain_core::KeychainError::InvalidKeyLength
+pub keychain_core::KeychainError::Locked
+pub keychain_core::KeychainError::MissingTable
+pub keychain_core::KeychainError::MissingTable::table_type: u32
+pub keychain_core::KeychainError::TooShort
+pub keychain_core::KeychainError::TooShort::available: usize
+pub keychain_core::KeychainError::TooShort::needed: usize
+pub keychain_core::KeychainError::TooShort::offset: usize
+pub struct keychain_core::Container<'a>
+impl<'a> keychain_core::container::Container<'a>
+pub fn keychain_core::container::Container<'a>::db_blob(&self) -> core::result::Result<keychain_core::container::DbBlob, keychain_core::error::KeychainError>
+pub fn keychain_core::container::Container<'a>::generic_password_records(&self) -> alloc::vec::Vec<keychain_core::container::GenericRecord>
+pub fn keychain_core::container::Container<'a>::parse(&'a [u8]) -> core::result::Result<Self, keychain_core::error::KeychainError>
+pub fn keychain_core::container::Container<'a>::symmetric_key_records(&self) -> alloc::vec::Vec<keychain_core::container::KeyBlobRecord>
+pub struct keychain_core::DbBlob
+pub keychain_core::DbBlob::cipher: alloc::vec::Vec<u8>
+pub keychain_core::DbBlob::iv: [u8; 8]
+pub keychain_core::DbBlob::salt: [u8; 20]
+pub struct keychain_core::GenericRecord
+pub keychain_core::GenericRecord::account: alloc::string::String
+pub keychain_core::GenericRecord::label: alloc::string::String
+pub keychain_core::GenericRecord::service: alloc::string::String
+pub keychain_core::GenericRecord::ssgp: core::option::Option<keychain_core::container::SsgpBlob>
+pub struct keychain_core::GenericSecret
+pub keychain_core::GenericSecret::account: alloc::string::String
+pub keychain_core::GenericSecret::label: alloc::string::String
+pub keychain_core::GenericSecret::secret: alloc::vec::Vec<u8>
+pub keychain_core::GenericSecret::service: alloc::string::String
+impl keychain_core::keychain::GenericSecret
+pub fn keychain_core::keychain::GenericSecret::as_text(&self) -> core::option::Option<&str>
+pub fn keychain_core::keychain::GenericSecret::display(&self) -> alloc::string::String
+pub struct keychain_core::KeyBlobRecord
+pub keychain_core::KeyBlobRecord::cipher: alloc::vec::Vec<u8>
+pub keychain_core::KeyBlobRecord::iv: [u8; 8]
+pub keychain_core::KeyBlobRecord::label: [u8; 20]
+pub struct keychain_core::Keychain<'a>
+impl<'a> keychain_core::keychain::Keychain<'a>
+pub fn keychain_core::keychain::Keychain<'a>::open(&'a [u8]) -> core::result::Result<Self, keychain_core::error::KeychainError>
+pub fn keychain_core::keychain::Keychain<'a>::unlock(&'a self, &[u8]) -> core::result::Result<keychain_core::keychain::UnlockedKeychain<'a>, keychain_core::error::KeychainError>
+pub struct keychain_core::SsgpBlob
+pub keychain_core::SsgpBlob::iv: [u8; 8]
+pub keychain_core::SsgpBlob::key_index: [u8; 20]
+pub keychain_core::SsgpBlob::payload: alloc::vec::Vec<u8>
+pub struct keychain_core::UnlockedKeychain<'a>
+impl keychain_core::keychain::UnlockedKeychain<'_>
+pub fn keychain_core::keychain::UnlockedKeychain<'_>::generic_secrets(&self) -> alloc::vec::Vec<keychain_core::keychain::GenericSecret>
+pub fn keychain_core::keychain::UnlockedKeychain<'_>::key_count(&self) -> usize
+pub const keychain_core::COMMON_BLOB_MAGIC: u32
+pub const keychain_core::KEYCHAIN_SIGNATURE: u32
+pub const keychain_core::MAGIC_CMS_IV: [u8; 8]
+pub const keychain_core::MASTER_KEY_LEN: usize
+pub const keychain_core::PBKDF2_ROUNDS: u32
+pub const keychain_core::RECORD_GENERIC_PASSWORD: u32
+pub const keychain_core::RECORD_METADATA: u32
+pub const keychain_core::RECORD_SYMMETRIC_KEY: u32
+pub fn keychain_core::derive_master_key(&[u8], &[u8]) -> [u8; 24]
+pub fn keychain_core::kcdecrypt(&[u8], &[u8], &[u8]) -> core::result::Result<alloc::vec::Vec<u8>, keychain_core::error::KeychainError>
+pub fn keychain_core::unwrap_key_blob(&[u8], &[u8], &[u8]) -> core::result::Result<[u8; 24], keychain_core::error::KeychainError>

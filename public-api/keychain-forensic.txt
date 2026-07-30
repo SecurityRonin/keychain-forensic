@@ -1,0 +1,30 @@
+pub mod keychain_forensic
+pub use keychain_forensic::keychain_core
+pub enum keychain_forensic::CliError
+pub keychain_forensic::CliError::Io(alloc::string::String)
+pub keychain_forensic::CliError::Locked(alloc::string::String)
+pub keychain_forensic::CliError::Parse(keychain_core::error::KeychainError)
+impl core::error::Error for keychain_forensic::CliError
+impl core::fmt::Display for keychain_forensic::CliError
+pub fn keychain_forensic::CliError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub enum keychain_forensic::FindingKind
+pub keychain_forensic::FindingKind::GenericSecret
+pub keychain_forensic::FindingKind::SafeStorageKey
+pub struct keychain_forensic::AuditReport
+pub keychain_forensic::AuditReport::findings: alloc::vec::Vec<keychain_forensic::Finding>
+pub keychain_forensic::AuditReport::key_count: usize
+pub struct keychain_forensic::Cli
+pub keychain_forensic::Cli::json: bool
+pub keychain_forensic::Cli::keychain: std::path::PathBuf
+pub keychain_forensic::Cli::password: alloc::string::String
+impl keychain_forensic::Cli
+pub fn keychain_forensic::Cli::run(&self) -> core::result::Result<keychain_forensic::AuditReport, keychain_forensic::CliError>
+pub struct keychain_forensic::Finding
+pub keychain_forensic::Finding::account: alloc::string::String
+pub keychain_forensic::Finding::kind: keychain_forensic::FindingKind
+pub keychain_forensic::Finding::label: alloc::string::String
+pub keychain_forensic::Finding::secret: alloc::string::String
+pub keychain_forensic::Finding::service: alloc::string::String
+pub fn keychain_forensic::audit(&[u8], &[u8]) -> core::result::Result<keychain_forensic::AuditReport, keychain_core::error::KeychainError>
+pub fn keychain_forensic::classify(&str) -> keychain_forensic::FindingKind
+pub fn keychain_forensic::render_text(&keychain_forensic::AuditReport) -> alloc::string::String
