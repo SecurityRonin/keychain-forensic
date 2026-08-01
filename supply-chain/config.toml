@@ -134,10 +134,6 @@ criteria = "safe-to-deploy"
 version = "1.0.107"
 criteria = "safe-to-deploy"
 
-[[exemptions.safe-read]]
-version = "0.2.1"
-criteria = "safe-to-deploy"
-
 [[exemptions.serde]]
 version = "1.0.229"
 criteria = "safe-to-deploy"
