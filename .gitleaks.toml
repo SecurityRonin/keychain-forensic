@@ -13,3 +13,12 @@ description = "OS-minted throwaway test keychain (no real credentials)"
 paths = [
   '''tests/data/test-login\.keychain-db''',
 ]
+# `generic-api-key` fires on ADR-0001's prose description of the keychain crypto
+# chain: the sentence "each per-record symmetric key is CMS-unwrapped from the
+# symmetric-key table:" ends in `key … :`, which the rule reads as an assignment,
+# and it captures the next token — the cipher name `3DES-decrypt`. That literal is
+# the name of an algorithm, not a credential. Scoped to the exact token so the rule
+# stays live for the rest of the file.
+regexes = [
+  '''3DES-decrypt''',
+]
