@@ -33,6 +33,8 @@ jobs:
       - name: Install nightly (cargo-semver-checks needs rustdoc JSON)
         run: rustup toolchain install nightly --profile minimal
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          cache-on-failure: true
       - uses: taiki-e/install-action@a402910a723481c4c80d006d75298c796a9c8695 # cargo-semver-checks
         with:
           tool: cargo-semver-checks

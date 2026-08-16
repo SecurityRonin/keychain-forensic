@@ -36,6 +36,8 @@ jobs:
       - name: Install nightly (cargo-public-api needs rustdoc JSON)
         run: rustup toolchain install "$NIGHTLY" --profile minimal
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          cache-on-failure: true
       - name: Install cargo-public-api
         run: cargo install cargo-public-api --locked --version "$CARGO_PUBLIC_API_VERSION"
       - name: Check public API against committed baselines
